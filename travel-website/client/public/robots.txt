@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jyothu-travels.com/sitemap.xml
+
+# Crawl delay - respectful crawling
+Crawl-delay: 1
+
+# Allow search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
