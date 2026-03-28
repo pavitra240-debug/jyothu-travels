@@ -12,6 +12,7 @@ import { TravelPackage } from '../models/Package.js';
 import { Booking } from '../models/Booking.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { authenticateAdmin } from '../middleware/auth.js';
+import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
 
@@ -34,8 +35,16 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 login requests per windowMs
+  message: { message: 'Too many login attempts, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Admin login route
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 

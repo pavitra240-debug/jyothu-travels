@@ -53,7 +53,8 @@ export default function Booking() {
     people: 1,
     type: 'package',
     serviceId: '',
-    message: ''
+    message: '',
+    website: '' // honeypot field
   });
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -83,15 +84,16 @@ export default function Booking() {
     setLoading(true);
     setStatus(null);
     try {
-      await axios.post('/api/book', {
-        name: form.name,
-        phone: form.phone,
-        email: form.email,
+      await axios.post('/api/booking', {
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
         travelDate: form.travelDate,
         numberOfPeople: Number(form.people),
-        message: form.message,
+        message: form.message.trim(),
         type: form.type,
-        serviceId: form.serviceId || null
+        serviceId: form.serviceId ? form.serviceId.trim() : null,
+        website: form.website // Honeypot field - bots will fill this
       });
       setStatus('success');
       setStep(4);
@@ -252,6 +254,17 @@ export default function Booking() {
                       required
                       placeholder="your@email.com"
                       className="w-full px-5 py-4 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder-white/30 text-white"
+                    />
+                  </div>
+                  {/* Honeypot field (hidden from users) */}
+                  <div className="hidden" aria-hidden="true">
+                    <input
+                      type="text"
+                      name="website"
+                      value={form.website}
+                      onChange={handleChange}
+                      tabIndex="-1"
+                      autoComplete="off"
                     />
                   </div>
                 </div>

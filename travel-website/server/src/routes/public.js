@@ -5,13 +5,20 @@ import { Bus } from '../models/Bus.js';
 import { TravelPackage } from '../models/Package.js';
 import Message from '../models/Message.js';
 import { sendBookingNotification, sendContactNotification } from '../utils/email.js';
+import xss from 'xss';
 
 const router = express.Router();
 
-router.post('/book', async (req, res) => {
+router.post('/booking', async (req, res) => {
   try {
-    const { name, phone, email, travelDate, numberOfPeople, type, serviceId, message } = req.body;
+    const { name, phone, email, travelDate, numberOfPeople, type, serviceId, message, website } = req.body;
     
+    // Honeypot check: If 'website' (hidden field) is filled, it's a bot.
+    if (website) {
+      console.log('Bot detected via honeypot field');
+      return res.status(200).json({ message: 'Booking received' }); // Silent rejection
+    }
+
     // Validate required fields
     if (!name || !phone || !email || !travelDate || !numberOfPeople || !type) {
       return res.status(400).json({ message: 'Please fill all required fields' });
@@ -28,6 +35,9 @@ router.post('/book', async (req, res) => {
       return res.status(400).json({ message: 'Invalid phone number' });
     }
     
+    // Sanitize message to prevent XSS
+    const sanitizedMessage = message ? xss(message.trim()) : '';
+
     const booking = await Booking.create({
       name: name.trim(),
       phone: phone.trim(),
@@ -36,7 +46,7 @@ router.post('/book', async (req, res) => {
       numberOfPeople: Number(numberOfPeople),
       type,
       serviceId: serviceId || null,
-      message: message?.trim() || '',
+      message: sanitizedMessage,
       status: 'Pending'
     });
     
@@ -49,13 +59,13 @@ router.post('/book', async (req, res) => {
       numberOfPeople: Number(numberOfPeople),
       type,
       serviceId: serviceId || null,
-      message: message?.trim() || ''
+      message: sanitizedMessage
     }).catch(console.error);
 
     res.status(201).json(booking);
   } catch (err) {
     console.error('Booking error:', err);
-    res.status(500).json({ message: 'Unable to create booking. Please try again.' });
+    res.status(500).json({ message: 'Booking failed, please try again' });
   }
 });
 
