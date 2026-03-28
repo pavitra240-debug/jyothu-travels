@@ -4,7 +4,7 @@
 - **Server:** Node.js (Express) on `http://localhost:5000`
 - **DB:** MongoDB Atlas
 
-## Run the full stack
+## Run the______ full stack
 
 1. **Environment**  
    In `server/.env` set:
@@ -12,7 +12,7 @@
    - `PORT=5000`
    - `JWT_SECRET` – any secret string
 
-2. **Start backend** (from `server`):
+2. **Start _____backend** (from `server`):
    ```bash
    cd server
    npm install
