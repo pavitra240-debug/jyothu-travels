@@ -33,13 +33,12 @@ app.use(
 );
 app.use(express.json());
 
-let __dirname;
-if (typeof __filename === 'undefined') {
-  const _filename = fileURLToPath(import.meta.url);
-  __dirname = path.dirname(_filename);
-} else {
-  __dirname = path.dirname(__filename);
-}
+// DELETE the old __filename and __dirname lines and use this:
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDirPath = path.dirname(currentFilePath);
+
+// Update your public path to use the new name
+const publicPath = path.join(currentDirPath, '..', 'public');
 
 // Routes
 app.use('/api/admin', adminRoutes);
