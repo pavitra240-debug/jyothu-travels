@@ -2,7 +2,8 @@
   base = "travel-website/client"
   command = "npm run build"
   publish = "dist"
-  functions = "../../netlify/functions" # This goes UP two levels to find the backend
+  # This goes UP from client, then INTO the netlify folder
+  functions = "../netlify/functions" 
 
 [[redirects]]
   from = "/api/*"
