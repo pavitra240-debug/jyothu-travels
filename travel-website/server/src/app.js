@@ -6,7 +6,7 @@ import path from 'path';
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
 import { fileURLToPath } from 'url';
-import { hash } from '@node-rs/bcrypt';
+import bcrypt from 'bcryptjs';
 
 import { connectDB } from './config/db.js';
 import { Admin } from './models/Admin.js';
@@ -33,9 +33,13 @@ app.use(
 );
 app.use(express.json());
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const publicPath = path.join(__dirname, '..', 'public');
+let __dirname;
+if (typeof __filename === 'undefined') {
+  const _filename = fileURLToPath(import.meta.url);
+  __dirname = path.dirname(_filename);
+} else {
+  __dirname = path.dirname(__filename);
+}
 
 // Routes
 app.use('/api/admin', adminRoutes);
@@ -45,8 +49,8 @@ app.use('/api', publicRoutes);
 app.use((err, req, res, next) => {
   console.error(err.stack);
   const status = err.status || 500;
-  const message = process.env.NODE_ENV === 'production' 
-    ? 'An unexpected error occurred. Please try again later.' 
+  const message = process.env.NODE_ENV === 'production'
+    ? 'An unexpected error occurred. Please try again later.'
     : err.message;
   res.status(status).json({ message });
 });
