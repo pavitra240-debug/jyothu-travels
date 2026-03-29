@@ -2,14 +2,13 @@
   base = "travel-website/client"
   command = "npm run build"
   publish = "dist"
-  functions = "travel-website/netlify/functions"
+  functions = "../../netlify/functions" # This goes UP two levels to find the backend
 
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
 
-  # This rule handles the "Page Not Found" on refresh
 [[redirects]]
   from = "/*"
   to = "/index.html"

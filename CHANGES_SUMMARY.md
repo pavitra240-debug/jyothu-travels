@@ -6,7 +6,7 @@ Your full-stack travel website has been thoroughly audited and fixed. All major 
 
 ---
 
-## 🐛 Issues Found & Fixed
+## 🐛 Issues______________ Found & Fixed
 
 ### Issue #1: ✅ Hardcoded Admin Credentials in Frontend
 **Status**: FIXED
