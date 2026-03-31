@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "cd travel-website/client && npm install && npm run build",
   "outputDirectory": "travel-website/client/dist",
   "rewrites": [
     {
