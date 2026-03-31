@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "build": "cd travel-website/client && npm install && npm run build",
     "start": "node api/index.js"
   },
   "dependencies": {
