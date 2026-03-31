@@ -1,11 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
+
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
-import { fileURLToPath } from 'url';
+
 import bcrypt from 'bcryptjs';
 
 import { connectDB } from './config/db.js';
@@ -33,12 +32,6 @@ app.use(
 );
 app.use(express.json());
 
-// DELETE the old __filename and __dirname lines and use this:
-const currentFilePath = fileURLToPath(import.meta.url);
-const currentDirPath = path.dirname(currentFilePath);
-
-// Update your public path to use the new name
-const publicPath = path.join(currentDirPath, '..', 'public');
 
 // Routes
 app.use('/api/admin', adminRoutes);
