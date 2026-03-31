@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "preview": "vite preview",
     "start": "node api/index.js"
   },
   "dependencies": {

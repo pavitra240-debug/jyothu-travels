@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "npm install && cd travel-website/client && npm install && npm run build",
+  "outputDirectory": "travel-website/client/dist",
   "rewrites": [
     {
       "source": "/api/(.*)",
