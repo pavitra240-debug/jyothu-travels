@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
 
-import bcrypt from 'bcryptjs';
+
 
 import { connectDB } from './config/db.js';
 import { Admin } from './models/Admin.js';

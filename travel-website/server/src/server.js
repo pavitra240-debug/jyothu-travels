@@ -4,14 +4,14 @@ import { Admin } from './models/Admin.js';
 import { Car } from './models/Car.js';
 import { Bus } from './models/Bus.js';
 import { TravelPackage } from './models/Package.js';
-import { hash } from '@node-rs/bcrypt';
+import bcrypt from 'bcryptjs';
 
 const PORT = Number(process.env.PORT) || 5000;
 
 async function ensureDefaultAdmin() {
   const adminCount = await Admin.countDocuments();
   if (adminCount === 0) {
-    const hashed = await hash(process.env.ADMIN_PASSWORD || 'AdminDefault123!', 10);
+    const hashed = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'AdminDefault123!', 10);
     await Admin.create({
       email: process.env.ADMIN_EMAIL || 'admin@jyothutravels.com',
       password: hashed

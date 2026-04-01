@@ -1,6 +1,6 @@
 import express from 'express';
 import fs from 'fs';
-import { verify } from '@node-rs/bcrypt';
+
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
@@ -63,8 +63,8 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { email: envEmail, role: 'admin' }, 
-      process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET, 
+      { email: envEmail, role: 'admin' },
+      process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
     return res.status(200).json({ token });
