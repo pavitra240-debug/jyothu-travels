@@ -1,53 +1,58 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import mongoSanitize from "express-mongo-sanitize";
+import path from "path";
+import { fileURLToPath } from "url";
 
-import helmet from 'helmet';
-import mongoSanitize from 'express-mongo-sanitize';
-
-
-
-import { connectDB } from './config/db.js';
-import { Admin } from './models/Admin.js';
-import { Car } from './models/Car.js';
-import { Bus } from './models/Bus.js';
-import { TravelPackage } from './models/Package.js';
-import adminRoutes from './routes/admin.js';
-import publicRoutes from './routes/public.js';
-
-dotenv.config();
+import publicRoutes from "./routes/public.js";
+import adminRoutes from "./routes/admin.js";
 
 const app = express();
 
-// Security Middlewares
-app.use(helmet({
-  contentSecurityPolicy: false,
-}));
-app.use(mongoSanitize());
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.set("trust proxy", 1);
+
+app.use(helmet());
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true
+    origin: true,
+    credentials: true,
   })
 );
-app.use(express.json());
 
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+app.use(mongoSanitize());
+
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+  })
+);
+
+// Public static files if needed
+app.use("/uploads", express.static(path.join(__dirname, "..", "public", "uploads")));
 
 // Routes
-app.get("/api/health",(req,res)=>{
-  res.json({status:"ok"});
-});
-app.use('/api/admin', adminRoutes);
-app.use('/api', publicRoutes);
+app.use("/api", publicRoutes);
+app.use("/api/admin", adminRoutes);
 
-// Error Handling Middleware (Generic for production)
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  const status = err.status || 500;
-  const message = process.env.NODE_ENV === 'production'
-    ? 'An unexpected error occurred. Please try again later.'
-    : err.message;
-  res.status(status).json({ message });
+// Health check
+app.get("/api/health", (_req, res) => {
+  res.json({ success: true, message: "API is running" });
+});
+
+// 404 fallback
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
 });
 
 export default app;
