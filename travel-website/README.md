@@ -12,7 +12,7 @@
    - `PORT=5000`
    - `JWT_SECRET` – any secret string
 
-2. **Start _____backend** (from `server`):
+2. **Start _____backend_______** (from `server`):
    ```bash
    cd server
    npm install

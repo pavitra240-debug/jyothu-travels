@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { Toaster, toast } from 'react-hot-toast';
+import { Menu, X } from 'lucide-react';
 import SEO from '../components/SEO';
+
+import Sidebar from '../components/admin/Sidebar';
+import Overview from '../components/admin/Overview';
+import ServicesManager from '../components/admin/ServicesManager';
+import BookingsManager from '../components/admin/BookingsManager';
 
 function useAdminApi() {
   const token = localStorage.getItem('jyothu_admin_token');
@@ -12,113 +19,31 @@ function useAdminApi() {
   return client;
 }
 
-function ServiceForm({ title, onSubmit, type }) {
-  const [form, setForm] = useState({
-    name: '',
-    description: '',
-    price: '',
-    imageUrl: ''
-  });
-  const [file, setFile] = useState(null);
-
-  function handleChange(e) {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    let imageUrl = form.imageUrl;
-    if (file) {
-      const token = localStorage.getItem('jyothu_admin_token');
-      const data = new FormData();
-      data.append('image', file);
-      const res = await fetch('/api/admin/upload-image', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: data
-      });
-      if (res.ok) {
-        const json = await res.json();
-        imageUrl = json.url;
-      }
-    }
-    await onSubmit({ ...form, imageUrl, type });
-    setForm({ name: '', description: '', price: '', imageUrl: '' });
-    setFile(null);
-  }
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 space-y-3"
-    >
-      <h3 className="font-semibold text-slate-900">{title}</h3>
-      <input
-        name="name"
-        value={form.name}
-        onChange={handleChange}
-        placeholder="Name"
-        required
-        className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
-      />
-      <textarea
-        name="description"
-        value={form.description}
-        onChange={handleChange}
-        placeholder="Description"
-        rows="2"
-        className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
-      />
-      <input
-        name="price"
-        value={form.price}
-        onChange={handleChange}
-        placeholder="Price"
-        className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
-      />
-      <input
-        name="imageUrl"
-        value={form.imageUrl}
-        onChange={handleChange}
-        placeholder="Image URL (optional – will be overwritten if a file is uploaded)"
-        className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
-      />
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => setFile(e.target.files?.[0] || null)}
-        className="w-full rounded-md border border-slate-200 px-3 py-2 text-xs"
-      />
-      <button
-        type="submit"
-        className="inline-flex items-center justify-center rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-light"
-      >
-        Add
-      </button>
-    </form>
-  );
-}
-
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const api = useAdminApi();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
   const [cars, setCars] = useState([]);
   const [buses, setBuses] = useState([]);
   const [packages, setPackages] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Check if token exists on mount
+  // Auth check
   useEffect(() => {
     const token = localStorage.getItem('jyothu_admin_token');
     if (!token) {
       navigate('/admin-login');
       return;
     }
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   async function loadData() {
+    setLoading(true);
     try {
       const [carsRes, busesRes, packagesRes, bookingsRes] = await Promise.all([
         api.get('/cars'),
@@ -130,274 +55,149 @@ export default function AdminDashboard() {
       setBuses(busesRes.data);
       setPackages(packagesRes.data);
       setBookings(bookingsRes.data);
-      setError(null);
     } catch (e) {
       if (e.response?.status === 401) {
         localStorage.removeItem('jyothu_admin_token');
         navigate('/admin-login?session_expired=true');
       } else {
-        setError('Unable to load admin data. Please try again.');
+        toast.error('Unable to load admin data');
       }
+    } finally {
+      setLoading(false);
     }
   }
-
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function handleLogout() {
     localStorage.removeItem('jyothu_admin_token');
     navigate('/admin-login');
+    toast.success('Logged out successfully');
   }
 
-  async function handleAddService(data) {
-    if (data.type === 'car') {
-      await api.post('/add-car', data);
-    } else if (data.type === 'bus') {
-      await api.post('/add-bus', data);
-    } else if (data.type === 'package') {
-      await api.post('/add-package', data);
+  async function handleAddService(data, file, type) {
+    const toastId = toast.loading(`Adding new ${type}...`);
+    try {
+      let imageUrl = data.imageUrl;
+      if (file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        const token = localStorage.getItem('jyothu_admin_token');
+        const res = await fetch('/api/admin/upload-image', {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData
+        });
+        if (res.ok) {
+          const json = await res.json();
+          imageUrl = json.url;
+        }
+      }
+
+      const payload = { ...data, imageUrl };
+      await api.post(`/add-${type}`, payload);
+      toast.success(`Successfully added ${type}`, { id: toastId });
+      await loadData();
+    } catch (error) {
+      toast.error(`Failed to add ${type}`, { id: toastId });
     }
-    await loadData();
   }
 
   async function handleDelete(type, id) {
-    await api.delete(`/delete/${type}/${id}`);
-    await loadData();
+    const confirm = window.confirm(`Are you sure you want to delete this ${type}?`);
+    if (!confirm) return;
+    
+    try {
+      await api.delete(`/delete/${type}/${id}`);
+      toast.success('Item deleted successfully');
+      await loadData();
+    } catch (error) {
+      toast.error('Failed to delete item');
+    }
   }
 
   async function handleUpdatePrice(type, id, price) {
-    await api.patch(`/update-price/${type}/${id}`, { price });
-    await loadData();
+    try {
+      await api.patch(`/update-price/${type}/${id}`, { price });
+      toast.success('Price updated successfully');
+      await loadData();
+    } catch (error) {
+      toast.error('Failed to update price');
+    }
   }
 
   async function handleBookingStatus(id, status) {
-    await api.patch(`/bookings/${id}`, { status });
-    await loadData();
+    try {
+      await api.patch(`/bookings/${id}`, { status });
+      toast.success(`Booking marked as ${status}`);
+      await loadData();
+    } catch (error) {
+      toast.error(`Failed to update booking status`);
+    }
   }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="h-16 w-16 animate-spin rounded-full border-t-4 border-primary border-r-transparent border-b-transparent"></div>
+      </div>
+    );
+  }
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return <Overview data={{ cars, buses, packages, bookings }} />;
+      case 'packages':
+        return <ServicesManager type="package" data={packages} onAdd={handleAddService} onDelete={handleDelete} onUpdatePrice={handleUpdatePrice} />;
+      case 'cars':
+        return <ServicesManager type="car" data={cars} onAdd={handleAddService} onDelete={handleDelete} onUpdatePrice={handleUpdatePrice} />;
+      case 'buses':
+        return <ServicesManager type="bus" data={buses} onAdd={handleAddService} onDelete={handleDelete} onUpdatePrice={handleUpdatePrice} />;
+      case 'bookings':
+        return <BookingsManager bookings={bookings} onUpdateStatus={handleBookingStatus} />;
+      default:
+        return <Overview data={{ cars, buses, packages, bookings }} />;
+    }
+  };
 
   return (
     <>
-      <SEO title="Admin Dashboard" />
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Admin Dashboard
-          </h1>
-          <button
-            onClick={handleLogout}
-            className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
-          >
-            Logout
+      <SEO title="Admin Dashboard | Jyothu Travels" />
+      <Toaster position="top-right" toastOptions={{
+        style: { background: '#1a1a1a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }
+      }} />
+
+      <div className="min-h-screen bg-black text-white flex overflow-hidden">
+        
+        {/* Animated Background Orbs */}
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/10 blur-[150px] rounded-full mix-blend-screen pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/10 blur-[150px] rounded-full mix-blend-screen pointer-events-none" />
+
+        {/* Sidebar (Desktop) */}
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
+
+        {/* Mobile Header & Sidebar */}
+        <div className="md:hidden fixed top-0 w-full bg-black/80 backdrop-blur-xl border-b border-white/10 z-50 flex items-center justify-between p-4 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">⚡</span>
+            <h2 className="text-lg font-bold">Admin Panel</h2>
+          </div>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white">
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
-        {error && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{error}</p>}
 
-        <section className="grid gap-6 md:grid-cols-3">
-          <ServiceForm
-            title="Add new car"
-            type="car"
-            onSubmit={handleAddService}
-          />
-          <ServiceForm
-            title="Add new bus"
-            type="bus"
-            onSubmit={handleAddService}
-          />
-          <ServiceForm
-            title="Add new travel package"
-            type="package"
-            onSubmit={handleAddService}
-          />
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold text-slate-900">
-            Manage services
-          </h2>
-          <div className="grid gap-6 md:grid-cols-3">
-            {[{ label: 'Cars', data: cars, type: 'car' }].map(({ label, data, type }) => (
-              <div key={label}>
-                <h3 className="font-semibold mb-2">{label}</h3>
-                <div className="space-y-2 text-sm">
-                  {data.map((item) => (
-                    <div
-                      key={item._id}
-                      className="border border-slate-200 rounded-lg p-3 flex flex-col gap-1"
-                    >
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-xs text-slate-500 line-clamp-2">
-                        {item.description}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <input
-                          type="text"
-                          defaultValue={item.price}
-                          onBlur={(e) =>
-                            handleUpdatePrice(type, item._id, e.target.value)
-                          }
-                          className="w-20 rounded-md border border-slate-200 px-2 py-1 text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(type, item._id)}
-                          className="text-xs text-red-600 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {data.length === 0 && (
-                    <p className="text-xs text-slate-400">No {label} yet.</p>
-                  )}
-                </div>
-              </div>
-            ))}
-            {[{ label: 'Buses', data: buses, type: 'bus' }].map(({ label, data, type }) => (
-              <div key={label}>
-                <h3 className="font-semibold mb-2">{label}</h3>
-                <div className="space-y-2 text-sm">
-                  {data.map((item) => (
-                    <div
-                      key={item._id}
-                      className="border border-slate-200 rounded-lg p-3 flex flex-col gap-1"
-                    >
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-xs text-slate-500 line-clamp-2">
-                        {item.description}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <input
-                          type="text"
-                          defaultValue={item.price}
-                          onBlur={(e) =>
-                            handleUpdatePrice(type, item._id, e.target.value)
-                          }
-                          className="w-20 rounded-md border border-slate-200 px-2 py-1 text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(type, item._id)}
-                          className="text-xs text-red-600 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {data.length === 0 && (
-                    <p className="text-xs text-slate-400">No {label} yet.</p>
-                  )}
-                </div>
-              </div>
-            ))}
-            {[{ label: 'Packages', data: packages, type: 'package' }].map(
-              ({ label, data, type }) => (
-                <div key={label}>
-                  <h3 className="font-semibold mb-2">{label}</h3>
-                  <div className="space-y-2 text-sm">
-                    {data.map((item) => (
-                      <div
-                        key={item._id}
-                        className="border border-slate-200 rounded-lg p-3 flex flex-col gap-1"
-                      >
-                        <div className="font-medium">{item.name}</div>
-                        <div className="text-xs text-slate-500 line-clamp-2">
-                          {item.description}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <input
-                            type="text"
-                            defaultValue={item.price}
-                            onBlur={(e) =>
-                              handleUpdatePrice(type, item._id, e.target.value)
-                            }
-                            className="w-20 rounded-md border border-slate-200 px-2 py-1 text-xs"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(type, item._id)}
-                            className="text-xs text-red-600 hover:underline"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {data.length === 0 && (
-                      <p className="text-xs text-slate-400">No {label} yet.</p>
-                    )}
-                  </div>
-                </div>
-              )
-            )}
+        {/* Mobile Sidebar Overlay */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-40 bg-black/95 pt-20 flex flex-col p-6">
+            <Sidebar activeTab={activeTab} setActiveTab={(t) => { setActiveTab(t); setIsMobileMenuOpen(false); }} onLogout={handleLogout} />
           </div>
-        </section>
+        )}
 
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold text-slate-900">
-            Booking requests
-          </h2>
-          <div className="space-y-3 text-sm">
-            {bookings.map((b) => (
-              <div
-                key={b._id}
-                className="border border-slate-200 rounded-lg p-3 flex flex-col gap-1 bg-white"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">
-                    {b.name} – {b.type.toUpperCase()}
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      b.status === 'Pending'
-                        ? 'bg-amber-100 text-amber-800'
-                        : b.status === 'Accepted'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-red-100 text-red-700'
-                    }`}
-                  >
-                    {b.status}
-                  </span>
-                </div>
-                <div className="text-xs text-slate-500">
-                  {b.phone} · {b.email}
-                  <br />
-                  Date: {new Date(b.travelDate).toLocaleDateString()} · People:{' '}
-                  {b.numberOfPeople}
-                </div>
-                {b.message && (
-                  <div className="text-xs text-slate-600 mt-1">
-                    Message: {b.message}
-                  </div>
-                )}
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleBookingStatus(b._id, 'Accepted')}
-                    className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleBookingStatus(b._id, 'Rejected')}
-                    className="px-3 py-1 rounded-full bg-red-600 text-white text-xs"
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
-            ))}
-            {bookings.length === 0 && (
-              <p className="text-xs text-slate-400">No bookings yet.</p>
-            )}
-          </div>
-        </section>
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto h-screen relative z-10 p-6 md:p-10 pt-24 md:pt-10 scrollbar-hide">
+          {renderContent()}
+        </main>
       </div>
     </>
   );
 }
-
